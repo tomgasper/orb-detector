@@ -16,11 +16,11 @@ namespace my
 	}
 
 
-	void randomPairs(std::vector<cv::Point2i>& p, std::vector<cv::Point2i>& q)
+	void randomPairs(std::vector<cv::Point2i>& p, std::vector<cv::Point2i>& q, int bound = 8)
 	{
 		std::random_device rd; // obtain random number
 		std::mt19937 mt(rd()); // seed
-		std::uniform_int_distribution<int> r1(-8, 8);
+		std::uniform_int_distribution<int> r1(-bound, bound);
 
 		for (int i = 0; i < 256; ++i)
 		{

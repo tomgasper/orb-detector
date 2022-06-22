@@ -2,10 +2,28 @@
 
 namespace my
 {
-	std::vector<std::vector<uint32_t>> BRIEF(cv::Mat& img, std::vector<cv::KeyPoint>& kpts, std::vector<cv::Point2i>& p, std::vector<cv::Point2i>& q)
+	std::vector<std::vector<uint32_t>> BRIEF(cv::Mat& img, std::vector<cv::KeyPoint>& all_kpts, std::vector<cv::Point2i>& p, std::vector<cv::Point2i>& q)
 	{
+		int patch_boundary = 4;
 		std::vector<std::vector<uint32_t>> desc_arr;
 
+		std::vector<cv::KeyPoint> kpts;
+
+		// first filter all keypoints that will be out of bounds
+		for (auto& kpt : all_kpts)
+		{
+			if (kpt.pt.x < patch_boundary || kpt.pt.y < patch_boundary || kpt.pt.y > img.rows - patch_boundary || kpt.pt.x > img.cols - patch_boundary)
+			{
+				continue;
+			}
+			else {
+				cv::KeyPoint new_kpt;
+				new_kpt.pt = cv::Point2i(kpt.pt.x, kpt.pt.y);
+				kpts.push_back(kpt);
+			}
+		}
+
+		// create descriptor for each good keypoint
 		for (int i = 0; i < kpts.size(); i++)
 		{
 			cv::KeyPoint& kpt = kpts[i];
@@ -24,7 +42,6 @@ namespace my
 
 				float m_10 = 0;
 				float m_01 = 0;
-				int patch_boundary = 4;
 
 				for (int l = -patch_boundary; l <= patch_boundary; l++)
 				{
@@ -51,6 +68,31 @@ namespace my
 					int r = k / 32;
 					desc_arr[i][r] = desc_arr[i][r] | 1 << idx;
 				}
+			}
+		}
+		return desc_arr;
+	}
+
+	void matchKeypoints(std::vector<std::vector<uint32_t>>& desc_1, std::vector<std::vector<uint32_t>>& desc_2, std::vector<std::vector<uint>>& match_indx)
+	{
+		for (int i = 0; i < desc_1.size(); ++i)
+		{
+			for (int j = 0; j < desc_2.size(); ++j)
+			{
+				int dist = 0;
+				for (int k = 0; k < 8; k++)
+				{
+					// using bitwise XOR operator to calculate Hamming distance
+					uint res = desc_1[i][k] ^ desc_2[j][k];
+
+					// dist += _mm_popcnt_u32(desc_1[i][k] ^ desc_2[j][k]);
+					while (res > 0)
+					{
+						dist += res & 1;
+						res = res >> 1;
+					}
+				}
+				match_indx[i][j] = dist;
 			}
 		}
 	}

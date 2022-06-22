@@ -7,6 +7,7 @@
 
 #include "util.h"
 #include "FAST.h"
+#include "BRIEF.h"
 
 int main()
 {
@@ -32,7 +33,10 @@ int main()
 
 	// generate random pairs for BRIEF descriptor
 	std::vector<cv::Point2i> p, q;
-	my::randomPairs(p, q);
+	my::randomPairs(p, q, 4);
+
+	std::vector<std::vector<uint32_t>> desc;
+	desc = my::BRIEF(img_0, img_0_kpts, p, q);
 
 	cv::waitKey(0);
 	return 0;
