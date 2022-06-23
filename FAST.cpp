@@ -11,7 +11,7 @@ namespace my
 				float c = img.at<float>(i, j);
 
 				// ring with radius 3
-				std::vector<std::reference_wrapper<float>> ring
+				std::vector<float> ring
 				{ img.at<float>(i, j + 3), img.at<float>(i - 1, j + 3), img.at<float>(i - 2, j + 2), img.at<float>(i - 3, j + 1),
 				img.at<float>(i - 3, j), img.at<float>(i - 3, j - 1), img.at<float>(i - 2, j - 2), img.at<float>(i - 1, j - 3), img.at<float>(i, j - 3),
 				img.at<float>(i + 1, j - 3), img.at<float>(i + 2, j - 2), img.at<float>(i + 3, j - 1), img.at<float>(i + 3, j),
@@ -24,19 +24,47 @@ namespace my
 				// quick check to avoid unnecessary computation
 				// to be added
 
-				for (int i = 0; i < ring.size(); i++)
-				{
-					if (c + t < ring[i].get()) { count_bright++; }
-					else if( c - t > ring[i].get() ) { count_dark++; }
+				// quick check 1
+
+				if (c - t <= img.at<float>(i - 3, j) && c + t >= img.at<float>(i - 3, j)
+					&& c - t <= img.at<float>(i + 3, j) && c + t >= img.at<float>(i + 3, j)) {
+					continue;
 				}
 
-				if (count_bright > n || count_dark > n)
+				// quick check 2
+
+				if (img.at<float>(i - 3, j) > c + t) count_bright++;
+				else count_dark++;
+
+				if (img.at<float>(i + 3, j) > c + t) count_bright++;
+				else count_dark++;
+
+				if (img.at<float>(i, j+3) > c + t) count_bright++;
+				else count_dark++;
+
+				if (img.at<float>(i, j - 3) > c + t) count_bright++;
+				else count_dark++;
+
+				if (count_bright >= 3 || count_dark >= 3)
 				{
-					cv::KeyPoint kpt;
-					kpt.pt = cv::Point2i(j, i);
-					kpts.push_back(kpt);
-					dst.at<uchar>(i, j) = (int)img.at<float>(i,j);
+					count_bright = 0;
+					count_dark = 0;
+
+					for (int i = 0; i < ring.size(); i++)
+					{
+						if (c + t < ring[i]) { count_bright++; }
+						else if (c - t > ring[i]) { count_dark++; }
+					}
+
+					if (count_bright > n || count_dark > n)
+					{
+						cv::KeyPoint kpt;
+						kpt.pt = cv::Point2i(j, i);
+						kpts.push_back(kpt);
+						dst.at<float>(i, j) = c;
+					}
 				}
+
 			}
 		}
 	}
@@ -139,16 +167,22 @@ namespace my
 
 		cv::Mat test_img(img.rows, img.cols, CV_8U, cv::Scalar(0));
 		std::vector<cv::KeyPoint> new_kpts;
-		for (int i = 0; i < (int)(R_arr.size()/5); i++)
-		{
-			cv::KeyPoint new_kpt;
-			new_kpt.pt = kpts[R_arr[i].indx].pt;
 
-			new_kpts.push_back(new_kpt);
-			test_img.at<char>(new_kpt.pt.y, new_kpt.pt.x) = 255;
+		int size_limit = (int)(R_arr.size() / 5);
+
+		for (int i = 0; i < size_limit; i++)
+		{
+			if (R_arr[i].R > 0)
+			{
+				cv::KeyPoint new_kpt;
+				new_kpt.pt = kpts[R_arr[i].indx].pt;
+
+				new_kpts.push_back(new_kpt);
+			}
+			// test_img.at<char>(new_kpt.pt.y, new_kpt.pt.x) = 255;
 		}
 		kpts = new_kpts;
 
-		cv::imshow("Harris Test black", test_img);
+		// cv::imshow("Harris Test black", test_img);
 	}
 }

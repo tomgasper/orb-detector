@@ -2,26 +2,9 @@
 
 namespace my
 {
-	std::vector<std::vector<uint32_t>> BRIEF(cv::Mat& img, std::vector<cv::KeyPoint>& all_kpts, std::vector<cv::Point2i>& p, std::vector<cv::Point2i>& q)
+	std::vector<std::vector<uint32_t>> BRIEF(cv::Mat& img, std::vector<cv::KeyPoint>& kpts, std::vector<cv::Point2i>& p, std::vector<cv::Point2i>& q, const int& patch_boundary = 8)
 	{
-		int patch_boundary = 4;
 		std::vector<std::vector<uint32_t>> desc_arr;
-
-		std::vector<cv::KeyPoint> kpts;
-
-		// first filter all keypoints that will be out of bounds
-		for (auto& kpt : all_kpts)
-		{
-			if (kpt.pt.x < patch_boundary || kpt.pt.y < patch_boundary || kpt.pt.y > img.rows - patch_boundary || kpt.pt.x > img.cols - patch_boundary)
-			{
-				continue;
-			}
-			else {
-				cv::KeyPoint new_kpt;
-				new_kpt.pt = cv::Point2i(kpt.pt.x, kpt.pt.y);
-				kpts.push_back(kpt);
-			}
-		}
 
 		// create descriptor for each good keypoint
 		for (int i = 0; i < kpts.size(); i++)
@@ -47,8 +30,8 @@ namespace my
 				{
 					for (int u = -patch_boundary; u <= patch_boundary; u++)
 					{
-						m_10 += l * img.at<float>(kpt.pt.y + l, kpt.pt.x + u);
 						m_01 += u * img.at<float>(kpt.pt.y + l, kpt.pt.x + u);
+						m_10 += l * img.at<float>(kpt.pt.y + l, kpt.pt.x + u);
 					}
 				}
 
@@ -66,6 +49,7 @@ namespace my
 					int idx = k % 32;
 					// vector index; 0 to 7
 					int r = k / 32;
+					// switch the bit corresponding to the given index
 					desc_arr[i][r] = desc_arr[i][r] | 1 << idx;
 				}
 			}
@@ -73,16 +57,17 @@ namespace my
 		return desc_arr;
 	}
 
-	void matchKeypoints(std::vector<std::vector<uint32_t>>& desc_1, std::vector<std::vector<uint32_t>>& desc_2, std::vector<std::vector<uint>>& match_indx)
+	void matchKeypoints(std::vector<std::vector<uint32_t>>& desc_1, std::vector<std::vector<uint32_t>>& desc_2, std::vector<cv::DMatch>& match_arr, const int& max_dist=35)
 	{
 		for (int i = 0; i < desc_1.size(); ++i)
 		{
+			cv::DMatch match(i, 0, 256);
 			for (int j = 0; j < desc_2.size(); ++j)
 			{
 				int dist = 0;
 				for (int k = 0; k < 8; k++)
 				{
-					// using bitwise XOR operator to calculate Hamming distance
+					// bitwise XOR operator to calculate Hamming distance
 					uint res = desc_1[i][k] ^ desc_2[j][k];
 
 					// dist += _mm_popcnt_u32(desc_1[i][k] ^ desc_2[j][k]);
@@ -92,7 +77,15 @@ namespace my
 						res = res >> 1;
 					}
 				}
-				match_indx[i][j] = dist;
+				if (dist < max_dist && dist < match.distance)
+				{
+					match.distance = dist;
+					match.trainIdx = j;
+				}
+			}
+			if (match.distance < max_dist)
+			{
+				match_arr.push_back(match);
 			}
 		}
 	}

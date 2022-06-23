@@ -28,4 +28,23 @@ namespace my
 			q.push_back(cv::Point2i(r1(mt), r1(mt)));
 		}
 	}
+
+	void filterOutOfBounds(std::vector<cv::KeyPoint>& all_kpts, const int& rows, const int& cols, const int& patch_boundary)
+	{
+		std::vector<cv::KeyPoint> kpts;
+
+		for (auto& kpt : all_kpts)
+		{
+			if (kpt.pt.x < patch_boundary || kpt.pt.y < patch_boundary || kpt.pt.y > rows - patch_boundary || kpt.pt.x > cols - patch_boundary)
+			{
+				continue;
+			}
+			else {
+				cv::KeyPoint new_kpt;
+				new_kpt.pt = cv::Point2i(kpt.pt.x, kpt.pt.y);
+				kpts.push_back(kpt);
+			}
+		}
+		all_kpts = kpts;
+	}
 }
